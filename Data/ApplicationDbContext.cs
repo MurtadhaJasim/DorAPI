@@ -10,12 +10,12 @@ public class ApplicationDbContext : DbContext
     {
     }
 
-    // DbSet properties for tables
-    public DbSet<Building> Buildings { get; set; }
-    public DbSet<Complex> Complexes { get; set; }
-    public DbSet<Customers> Customers { get; set; }
-    public DbSet<Property> Properties { get; set; }
-    public DbSet<User> Users { get; set; }
+
+    public DbSet<Building> Buildings { get; set; } = null!;
+    public DbSet<Complex> Complexes { get; set; } = null!;
+    public DbSet<Customers> Customers { get; set; } = null!;
+    public DbSet<Property> Properties { get; set; } = null!;
+    public DbSet<User> Users { get; set; } = null!;
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
