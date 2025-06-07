@@ -77,9 +77,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// 👇 مهم: حدد الـ PORT قبل بناء التطبيق
-var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
-builder.WebHost.UseUrls($"https://*:{port}");
 
 var app = builder.Build();
 
