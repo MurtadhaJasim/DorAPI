@@ -78,9 +78,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 
-var app = builder.Build();
 var port = Environment.GetEnvironmentVariable("PORT") ?? "3000";
-app.Urls.Add($"http://*:{port}");
+
+builder.WebHost.UseUrls($"http://*:{port}");
+
+var app = builder.Build();
+
 
 
 // Auto apply migrations
