@@ -66,9 +66,7 @@ builder.Services.AddSwaggerGen(opt =>
 });
 
 // إعداد قاعدة البيانات PostgreSQL
-// استخدم متغير البيئة DATABASE_PUBLIC_URL مع التحويل إلى سلسلة اتصال Npgsql صحيحة
 string? databaseUrl = builder.Configuration["DATABASE_PUBLIC_URL"];
-
 string connectionString;
 if (!string.IsNullOrEmpty(databaseUrl))
 {
@@ -100,11 +98,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// إعداد المنفذ من متغيرات البيئة
-var port = Environment.GetEnvironmentVariable("PORT") ?? "3000";
-builder.WebHost.ConfigureKestrel(serverOptions =>
+// إعداد المنفذ من متغيرات البيئة (Railway يستخدم PORT)
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+builder.WebHost.ConfigureKestrel(options =>
 {
-    serverOptions.Listen(System.Net.IPAddress.Any, int.Parse(port));
+    options.ListenAnyIP(int.Parse(port));
 });
 
 var app = builder.Build();
@@ -126,13 +124,16 @@ app.UseStaticFiles(new StaticFileOptions
     }
 });
 
+// Swagger UI على صفحة الجذر
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dor API V1");
-    c.RoutePrefix = string.Empty; // يجعل Swagger في صفحة الجذر
+    c.RoutePrefix = string.Empty; // Swagger على الصفحة الرئيسية
 });
 
+// إضافة route بسيط للتأكيد
+app.MapGet("/", () => Results.Redirect("/swagger"));
 
 app.UseCors("AllowFrontend");
 
