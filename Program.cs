@@ -14,26 +14,36 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Logging
+// تحميل متغيرات البيئة من Railway
+builder.Configuration.AddEnvironmentVariables();
+
+// تسجيل الخدمات والاعتمادات
 builder.Services.AddLogging(cfg => cfg.AddDebug());
 builder.Services.AddResponseCompression();
-builder.Configuration.AddEnvironmentVariables(); // Load from Railway
-
-// Filters
 builder.Services.AddControllers(options => options.Filters.Add<LogActivityFilter>());
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+builder.Services.AddAutoMapper(typeof(MappingProfile));
+builder.Services.AddScoped<IAuthService, AuthService>();
 
-// File service
+// إعداد خدمة الملفات
 builder.Services.AddScoped<FileService>(provider =>
 {
     var path = builder.Configuration["FileStoragePath"] ?? "wwwroot/files";
     return new FileService(path);
 });
 
-builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-builder.Services.AddAutoMapper(typeof(MappingProfile));
-builder.Services.AddScoped<IAuthService, AuthService>();
+// إعداد CORS للفرونت من Netlify
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", builder =>
+    {
+        builder.WithOrigins("https://dor-complix.netlify.app")
+               .AllowAnyHeader()
+               .AllowAnyMethod();
+    });
+});
 
-// Swagger + JWT
+// إعداد Swagger + JWT
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(opt =>
 {
@@ -46,6 +56,7 @@ builder.Services.AddSwaggerGen(opt =>
         In = ParameterLocation.Header,
         Description = "Enter Token"
     });
+
     opt.AddSecurityRequirement(new OpenApiSecurityRequirement {
         { new OpenApiSecurityScheme {
             Reference = new OpenApiReference {
@@ -55,11 +66,11 @@ builder.Services.AddSwaggerGen(opt =>
     });
 });
 
-// DB Context
+// إعداد قاعدة البيانات PostgreSQL
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// JWT Options
+// إعداد JWT
 builder.Services.Configure<jwtOptions>(builder.Configuration.GetSection("Jwt"));
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -77,21 +88,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-
+// إعداد المنفذ من متغيرات البيئة
 var port = Environment.GetEnvironmentVariable("PORT") ?? "3000";
-
 builder.WebHost.UseUrls($"http://*:{port}");
 
 var app = builder.Build();
 
-
-
+// تطبيق التهجير التلقائي عند التشغيل (أول مرة فقط)
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.Migrate(); 
+    db.Database.Migrate();
 }
-
 
 // Middleware
 app.UseResponseCompression();
@@ -102,11 +110,16 @@ app.UseStaticFiles(new StaticFileOptions
         ctx.Context.Response.Headers.Append("Cache-Control", "public,max-age=600");
     }
 });
+
 app.UseSwagger();
 app.UseSwaggerUI();
+
+app.UseCors("AllowFrontend");
+
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();
