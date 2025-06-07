@@ -25,7 +25,8 @@ builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 builder.Services.AddScoped<IAuthService, AuthService>();
 
-builder.Services.AddScoped<FileService>();
+string fileStoragePath = Path.Combine(builder.Environment.ContentRootPath, "FileStorage");
+builder.Services.AddScoped<FileService>(sp => new FileService(fileStoragePath));
 
 // إعداد CORS للفرونت من Netlify
 builder.Services.AddCors(options =>
