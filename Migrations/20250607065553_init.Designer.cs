@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Dor.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250607063650_init")]
+    [Migration("20250607065553_init")]
     partial class init
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
