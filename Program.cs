@@ -79,6 +79,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 
 var app = builder.Build();
+var port = Environment.GetEnvironmentVariable("PORT") ?? "3000";
+app.Urls.Add($"http://*:{port}");
+
 
 // Auto apply migrations
 using (var scope = app.Services.CreateScope())
