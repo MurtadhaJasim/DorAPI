@@ -10,7 +10,7 @@ namespace Dor.Controllers;
 
 [ApiController]
 [Route("api/complexs")]
-[Authorize]
+[AllowAnonymous]
 public class ComplexsController : ControllerBase
 {
     private readonly IRepository<Complex> _complexRepository;

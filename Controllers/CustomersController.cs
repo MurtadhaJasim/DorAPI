@@ -10,7 +10,7 @@ namespace Dor.Controllers;
 
 [ApiController]
 [Route("api/customers")]
-[Authorize]
+[AllowAnonymous]
 public class CustomersController : ControllerBase
 {
     private readonly IRepository<Customers> _customerRepository;

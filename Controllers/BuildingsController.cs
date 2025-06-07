@@ -10,7 +10,7 @@ namespace Dor.Controllers;
 
 [ApiController]
 [Route("api/buildings")]
-[Authorize]
+[AllowAnonymous]
 public class BuildingsController : ControllerBase
 {
     private readonly IRepository<Building> _buildingRepository;
@@ -27,7 +27,7 @@ public class BuildingsController : ControllerBase
     }
 
     [HttpGet]
-    [Route("GetAll")]
+    [Route("")]
     public async Task<ActionResult<IEnumerable<BuildingDto>>> GetAll()
     {
         var records = await _buildingRepository.GetAllAsync();

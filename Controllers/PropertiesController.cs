@@ -10,7 +10,7 @@ namespace Dor.Controllers;
 
 [ApiController]
 [Route("api/properties")]
-[Authorize]
+[AllowAnonymous]
 public class PropertiesController : ControllerBase
 {
     private readonly IRepository<Property> _propertyRepository;
