@@ -40,7 +40,7 @@ public class BuildingsController : ControllerBase
 
     [HttpGet]
     [Route("{id}")]
-    public async Task<ActionResult<BuildingDto>> GetById(int id)
+    public async Task<ActionResult<BuildingDto>> GetById([FromQuery] int id)
     {
         _logger.LogDebug("Getting building #{id}", id);
         var record = await _buildingRepository.GetByIdAsync(id);
@@ -56,7 +56,7 @@ public class BuildingsController : ControllerBase
 
     [HttpPost]
     [Route("")]
-    public async Task<ActionResult<int>> Create([FromBody] CreateBuildingDto createBuildingDto, [FromForm] IFormFile file)
+    public async Task<ActionResult<int>> Create([FromForm] CreateBuildingDto createBuildingDto, IFormFile file)
     {
         if (file == null || file.Length == 0)
             return BadRequest("Invalid file.");
@@ -78,7 +78,7 @@ public class BuildingsController : ControllerBase
 
     [HttpPut]
     [Route("")]
-    public async Task<IActionResult> Update(UpdateBuildingDto updateBuildingDto)
+    public async Task<IActionResult> Update([FromBody] UpdateBuildingDto updateBuildingDto)
     {
         var existingBuilding = await _buildingRepository.GetByIdAsync(updateBuildingDto.Id);
         if (existingBuilding == null)
@@ -91,7 +91,7 @@ public class BuildingsController : ControllerBase
 
     [HttpDelete]
     [Route("{id}")]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Delete([FromQuery] int id)
     {
         var existingBuilding = await _buildingRepository.GetByIdAsync(id);
         if (existingBuilding == null)

@@ -38,7 +38,7 @@ public class CustomersController : ControllerBase
 
     [HttpGet]
     [Route("{id}")]
-    public async Task<ActionResult<CustomerDto>> GetById(int id)
+    public async Task<ActionResult<CustomerDto>> GetById([FromQuery] int id)
     {
         var customer = await _customerRepository.GetByIdAsync(id);
         if (customer == null)
@@ -49,7 +49,7 @@ public class CustomersController : ControllerBase
     }
     [HttpPost]
     [Route("")]
-    public async Task<ActionResult<int>> Create([FromBody] CreateCustomerDto createCustomerDto, [FromForm] IFormFile photo)
+    public async Task<ActionResult<int>> Create([FromForm] CreateCustomerDto createCustomerDto,IFormFile photo)
     {
         if (photo == null || photo.Length == 0)
             return BadRequest("Invalid photo file.");
@@ -71,7 +71,7 @@ public class CustomersController : ControllerBase
 
     [HttpPut]
     [Route("")]
-    public async Task<IActionResult> Update(UpdateCustomerDto updateCustomerDto)
+    public async Task<IActionResult> Update([FromBody] UpdateCustomerDto updateCustomerDto)
     {
         var existingCustomer = await _customerRepository.GetByIdAsync(updateCustomerDto.Id);
         if (existingCustomer == null)
@@ -84,7 +84,7 @@ public class CustomersController : ControllerBase
 
     [HttpDelete]
     [Route("{id}")]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Delete([FromQuery] int id)
     {
         var existingCustomer = await _customerRepository.GetByIdAsync(id);
         if (existingCustomer == null)

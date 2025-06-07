@@ -38,7 +38,7 @@ public class ComplexsController : ControllerBase
 
     [HttpGet]
     [Route("{id}")]
-    public async Task<ActionResult<ComplexDto>> GetComplexById(int id)
+    public async Task<ActionResult<ComplexDto>> GetComplexById([FromQuery] int id)
     {
         var record = await _complexRepository.GetByIdAsync(id);
         if (record == null)
@@ -50,7 +50,7 @@ public class ComplexsController : ControllerBase
 
     [HttpPost]
     [Route("")]
-    public async Task<ActionResult<int>> AddComplexWithFile([FromBody] CreateComplexDto createComplexDto, [FromForm] IFormFile file)
+    public async Task<ActionResult<int>> AddComplexWithFile([FromForm] CreateComplexDto createComplexDto,IFormFile file)
     {
         if (file == null || file.Length == 0)
             return BadRequest("Invalid file.");
@@ -72,7 +72,7 @@ public class ComplexsController : ControllerBase
 
     [HttpPut]
     [Route("")]
-    public async Task<IActionResult> UpdateComplex(UpdateComplexDto updateComplexDto)
+    public async Task<IActionResult> UpdateComplex([FromBody] UpdateComplexDto updateComplexDto)
     {
         var existingComplex = await _complexRepository.GetByIdAsync(updateComplexDto.Id);
         if (existingComplex == null)
@@ -85,7 +85,7 @@ public class ComplexsController : ControllerBase
 
     [HttpDelete]
     [Route("{id}")]
-    public async Task<IActionResult> DeleteComplex(int id)
+    public async Task<IActionResult> DeleteComplex([FromQuery] int id)
     {
         var existingComplex = await _complexRepository.GetByIdAsync(id);
         if (existingComplex == null)

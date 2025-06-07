@@ -38,7 +38,7 @@ public class PropertiesController : ControllerBase
 
     [HttpGet]
     [Route("{id}")]
-    public async Task<ActionResult<PropertyDto>> GetById(int id)
+    public async Task<ActionResult<PropertyDto>> GetById([FromQuery] int id)
     {
         var record = await _propertyRepository.GetByIdAsync(id);
         if (record == null)
@@ -50,7 +50,7 @@ public class PropertiesController : ControllerBase
 
     [HttpPost]
     [Route("")]
-    public async Task<ActionResult<int>> Create([FromBody] CreatePropertyDto createPropertyDto, [FromForm] IFormFile file)
+    public async Task<ActionResult<int>> Create([FromForm] CreatePropertyDto createPropertyDto, IFormFile file)
     {
         if (file == null || file.Length == 0)
             return BadRequest("Invalid file.");
@@ -72,7 +72,7 @@ public class PropertiesController : ControllerBase
 
     [HttpPut]
     [Route("")]
-    public async Task<IActionResult> Update(UpdatePropertyDto updatePropertyDto)
+    public async Task<IActionResult> Update([FromBody] UpdatePropertyDto updatePropertyDto)
     {
         var existingProperty = await _propertyRepository.GetByIdAsync(updatePropertyDto.Id);
         if (existingProperty == null)
@@ -85,7 +85,7 @@ public class PropertiesController : ControllerBase
 
     [HttpDelete]
     [Route("{id}")]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Delete([FromQuery] int id)
     {
         var existingProperty = await _propertyRepository.GetByIdAsync(id);
         if (existingProperty == null)
