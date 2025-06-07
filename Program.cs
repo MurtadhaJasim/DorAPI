@@ -25,18 +25,14 @@ builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 builder.Services.AddScoped<IAuthService, AuthService>();
 
-builder.Services.AddScoped<FileService>(provider =>
-{
-    var path = builder.Configuration["FileStoragePath"] ?? "wwwroot/files";
-    return new FileService(path);
-});
+builder.Services.AddScoped<FileService>();
 
 // إعداد CORS للفرونت من Netlify
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", builder =>
     {
-        builder.WithOrigins("https://dor-complix.netlify.app")
+        builder.AllowAnyOrigin()
                .AllowAnyHeader()
                .AllowAnyMethod();
     });
@@ -99,6 +95,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 // إعداد المنفذ من متغيرات البيئة (Railway يستخدم PORT)
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.ListenAnyIP(int.Parse(port));
+});
 
 
 
@@ -113,13 +115,7 @@ using (var scope = app.Services.CreateScope())
 
 // Middleware
 app.UseResponseCompression();
-app.UseStaticFiles(new StaticFileOptions
-{
-    OnPrepareResponse = ctx =>
-    {
-        ctx.Context.Response.Headers.Append("Cache-Control", "public,max-age=600");
-    }
-});
+app.UseStaticFiles();
 
 // Swagger UI على صفحة الجذر
 app.UseSwagger();
