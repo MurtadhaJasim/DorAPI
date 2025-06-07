@@ -74,10 +74,20 @@ builder.Services.AddSwaggerGen(options =>
         $"{apiDesc.ActionDescriptor.RouteValues["controller"]}_{apiDesc.HttpMethod}_{apiDesc.RelativePath}");
 });
 
-// Database
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+string? databaseUrl = builder.Configuration["DATABASE_PUBLIC_URL"];
 
+string connectionString;
+if (!string.IsNullOrEmpty(databaseUrl))
+{
+    connectionString = ConvertPostgresUrlToConnectionString(databaseUrl);
+}
+else
+{
+    connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
+}
+
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseNpgsql(connectionString));
 
 
 // JWT Configuration
@@ -137,3 +147,22 @@ app.MapControllers();
 app.UseStaticFiles();
 
 app.Run();
+
+static string ConvertPostgresUrlToConnectionString(string databaseUrl)
+{
+    var uri = new Uri(databaseUrl);
+    var userInfo = uri.UserInfo.Split(':');
+
+    var builder = new Npgsql.NpgsqlConnectionStringBuilder()
+    {
+        Host = uri.Host,
+        Port = uri.Port,
+        Username = userInfo[0],
+        Password = userInfo[1],
+        Database = uri.AbsolutePath.TrimStart('/'),
+        SslMode = Npgsql.SslMode.Prefer,
+        TrustServerCertificate = true
+    };
+
+    return builder.ToString();
+}
