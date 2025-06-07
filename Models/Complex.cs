@@ -1,13 +1,22 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using System.ComponentModel.DataAnnotations;
 
-namespace Dor.Models
+namespace Dor.Models;
+
+public class Complex
 {
-    public class Complex
-    {
-        public int Id { get; set; }
-        public string? ComplexName { get; set; }
-        public string? Type { get; set; }
-        public string? LogoPath { get; set; }
-        public string? Address { get; set; }
-    }
+    [Key]
+    public int Id { get; set; }
+
+    [Display(Name = "Complex Name")]
+    [StringLength(100, ErrorMessage = "Complex name cannot exceed 100 characters")]
+    public string? ComplexName { get; set; }
+
+    [StringLength(50)]
+    public string? Type { get; set; }
+
+    [Display(Name = "Logo Path")]
+    public string? LogoPath { get; set; }
+
+    [StringLength(200)]
+    public string? Address { get; set; }
 }

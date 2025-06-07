@@ -27,7 +27,7 @@ public class BuildingsController : ControllerBase
     }
 
     [HttpGet]
-    [Route("")]
+    [Route("GetAll")]
     public async Task<ActionResult<IEnumerable<BuildingDto>>> GetAll()
     {
         var records = await _buildingRepository.GetAllAsync();
