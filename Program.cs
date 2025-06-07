@@ -74,7 +74,7 @@ builder.Services.AddSwaggerGen(options =>
         $"{apiDesc.ActionDescriptor.RouteValues["controller"]}_{apiDesc.HttpMethod}_{apiDesc.RelativePath}");
 });
 
-string? databaseUrl = builder.Configuration["DATABASE_PUBLIC_URL"];
+string? databaseUrl = builder.Configuration["DATABASE_URL"];
 
 string connectionString;
 if (!string.IsNullOrEmpty(databaseUrl))
