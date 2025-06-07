@@ -99,13 +99,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 // إعداد المنفذ من متغيرات البيئة (Railway يستخدم PORT)
-var port = Environment.GetEnvironmentVariable("PORT");
-if (string.IsNullOrEmpty(port))
-    port = "5000";
-builder.WebHost.ConfigureKestrel(options =>
-{
-    options.ListenAnyIP(int.Parse(port));
-});
+
 
 
 var app = builder.Build();
