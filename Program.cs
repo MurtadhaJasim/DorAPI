@@ -1,4 +1,5 @@
-﻿using Dor;
+﻿using AutoMapper;
+using Dor;
 using Dor.Data;
 using Dor.Filters;
 using Dor.Interfaces;
