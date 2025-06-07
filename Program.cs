@@ -14,33 +14,53 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Logging
-builder.Services.AddLogging(cfg =>
+// =======================
+// 1. الإعدادات العامة
+// =======================
+builder.Configuration.AddEnvironmentVariables();
+builder.Services.AddLogging(cfg => cfg.AddDebug());
+builder.Services.AddResponseCompression();
+
+// =======================
+// 2. إعداد CORS
+// =======================
+builder.Services.AddCors(options =>
 {
-    cfg.AddDebug();
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
 });
 
-
-
-builder.Services.AddResponseCompression();
-builder.Configuration.AddEnvironmentVariables();
-
-// Global Filters
+// =======================
+// 3. الفلاتر والتحكم
+// =======================
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<LogActivityFilter>();
 });
 
-// Register FileService with dependency injection
+// =======================
+// 4. الخدمات العامة
+// =======================
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+builder.Services.AddAutoMapper(typeof(MappingProfile));
+builder.Services.AddScoped<IAuthService, AuthService>();
+
+// =======================
+// 5. FileService
+// =======================
 builder.Services.AddScoped<FileService>(provider =>
 {
     var fileStoragePath = builder.Configuration["FileStoragePath"] ?? "wwwroot/files";
     return new FileService(fileStoragePath);
 });
-builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-builder.Services.AddAutoMapper(typeof(MappingProfile));
 
-// Swagger with Authorization
+// =======================
+// 6. Swagger مع توثيق JWT
+// =======================
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -69,14 +89,16 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 
-    // Resolve duplicate key issue
     options.CustomOperationIds(apiDesc =>
         $"{apiDesc.ActionDescriptor.RouteValues["controller"]}_{apiDesc.HttpMethod}_{apiDesc.RelativePath}");
 });
 
+// =======================
+// 7. إعداد قاعدة البيانات
+// =======================
 string? databaseUrl = builder.Configuration["DATABASE_URL"];
-
 string connectionString;
+
 if (!string.IsNullOrEmpty(databaseUrl))
 {
     connectionString = ConvertPostgresUrlToConnectionString(databaseUrl);
@@ -89,15 +111,11 @@ else
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-
-// JWT Configuration
+// =======================
+// 8. إعداد JWT
+// =======================
 builder.Services.Configure<jwtOptions>(builder.Configuration.GetSection("Jwt"));
 
-// AuthService Registration
-builder.Services.AddScoped<IAuthService, AuthService>();
-
-
-// JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -115,18 +133,31 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+// =======================
+// 9. إعداد المنفذ من Railway
+// =======================
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
 builder.WebHost.UseUrls($"http://*:{port}");
 
+// =======================
+// 10. بناء التطبيق
+// =======================
 var app = builder.Build();
 
+// =======================
+// 11. التهيئة وقت التشغيل
+// =======================
 app.UseResponseCompression();
+
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    //db.Database.Migrate();
+    //db.Database.Migrate(); // ✅ تنفيذ المايغريشن
 }
 
+// =======================
+// 12. ملفات ثابتة
+// =======================
 app.UseStaticFiles(new StaticFileOptions
 {
     OnPrepareResponse = ctx =>
@@ -135,21 +166,28 @@ app.UseStaticFiles(new StaticFileOptions
     }
 });
 
-// Swagger
+// =======================
+// 13. Middlewares
+// =======================
 app.UseSwagger();
 app.UseSwaggerUI();
 
-// Middlewares
 app.UseHttpsRedirection();
+app.UseCors("AllowFrontend");
+
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Endpoints
+// =======================
+// 14. تشغيل Controllers
+// =======================
 app.MapControllers();
-app.UseStaticFiles();
 
 app.Run();
 
+// =======================
+// 15. تحويل DATABASE_URL
+// =======================
 static string ConvertPostgresUrlToConnectionString(string databaseUrl)
 {
     var uri = new Uri(databaseUrl);
