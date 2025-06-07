@@ -14,7 +14,7 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// تحميل متغيرات البيئة من Railway
+// تحميل متغيرات البيئة (Railway أو أي منصة)
 builder.Configuration.AddEnvironmentVariables();
 
 // تسجيل الخدمات والاعتمادات
@@ -25,7 +25,6 @@ builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 builder.Services.AddScoped<IAuthService, AuthService>();
 
-// إعداد خدمة الملفات
 builder.Services.AddScoped<FileService>(provider =>
 {
     var path = builder.Configuration["FileStoragePath"] ?? "wwwroot/files";
@@ -43,7 +42,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-// إعداد Swagger + JWT
+// Swagger مع دعم JWT
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(opt =>
 {
@@ -67,8 +66,21 @@ builder.Services.AddSwaggerGen(opt =>
 });
 
 // إعداد قاعدة البيانات PostgreSQL
+// استخدم متغير البيئة DATABASE_PUBLIC_URL مع التحويل إلى سلسلة اتصال Npgsql صحيحة
+string? databaseUrl = builder.Configuration["DATABASE_PUBLIC_URL"];
+
+string connectionString;
+if (!string.IsNullOrEmpty(databaseUrl))
+{
+    connectionString = ConvertPostgresUrlToConnectionString(databaseUrl);
+}
+else
+{
+    connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
+}
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
 
 // إعداد JWT
 builder.Services.Configure<jwtOptions>(builder.Configuration.GetSection("Jwt"));
@@ -94,7 +106,7 @@ builder.WebHost.UseUrls($"http://*:{port}");
 
 var app = builder.Build();
 
-// تطبيق التهجير التلقائي عند التشغيل (أول مرة فقط)
+// تنفيذ المايكريشن التلقائي عند تشغيل التطبيق
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -123,3 +135,22 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+static string ConvertPostgresUrlToConnectionString(string databaseUrl)
+{
+    var uri = new Uri(databaseUrl);
+    var userInfo = uri.UserInfo.Split(':');
+
+    var builder = new Npgsql.NpgsqlConnectionStringBuilder()
+    {
+        Host = uri.Host,
+        Port = uri.Port,
+        Username = userInfo[0],
+        Password = userInfo[1],
+        Database = uri.AbsolutePath.TrimStart('/'),
+        SslMode = Npgsql.SslMode.Prefer,
+        TrustServerCertificate = true
+    };
+
+    return builder.ToString();
+}
