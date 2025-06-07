@@ -115,6 +115,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+builder.WebHost.UseUrls($"http://*:{port}");
+
 var app = builder.Build();
 
 app.UseResponseCompression();
@@ -131,8 +134,7 @@ app.UseStaticFiles(new StaticFileOptions
         ctx.Context.Response.Headers.Append("Cache-Control", "public,max-age=600");
     }
 });
-var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
-builder.WebHost.UseUrls($"http://*:{port}");
+
 // Swagger
 app.UseSwagger();
 app.UseSwaggerUI();
