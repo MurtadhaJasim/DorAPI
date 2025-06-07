@@ -1,4 +1,5 @@
-﻿using Dor;
+﻿using AutoMapper;
+using Dor;
 using Dor.Data;
 using Dor.Filters;
 using Dor.Interfaces;
@@ -9,42 +10,34 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Logging
-builder.Services.AddLogging(cfg =>
-{
-    cfg.AddDebug();
-});
-
-
-
+builder.Services.AddLogging(cfg => cfg.AddDebug());
 builder.Services.AddResponseCompression();
-builder.Configuration.AddEnvironmentVariables();
+builder.Configuration.AddEnvironmentVariables(); // Load from Railway
 
-// Global Filters
-builder.Services.AddControllers(options =>
-{
-    options.Filters.Add<LogActivityFilter>();
-});
+// Filters
+builder.Services.AddControllers(options => options.Filters.Add<LogActivityFilter>());
 
-// Register FileService with dependency injection
+// File service
 builder.Services.AddScoped<FileService>(provider =>
 {
-    var fileStoragePath = builder.Configuration["FileStoragePath"] ?? "wwwroot/files";
-    return new FileService(fileStoragePath);
+    var path = builder.Configuration["FileStoragePath"] ?? "wwwroot/files";
+    return new FileService(path);
 });
+
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddAutoMapper(typeof(MappingProfile));
+builder.Services.AddScoped<IAuthService, AuthService>();
 
-// Swagger with Authorization
+// Swagger + JWT
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
+builder.Services.AddSwaggerGen(opt =>
 {
-    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    opt.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
         Type = SecuritySchemeType.Http,
@@ -53,67 +46,52 @@ builder.Services.AddSwaggerGen(options =>
         In = ParameterLocation.Header,
         Description = "Enter Token"
     });
-
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            Array.Empty<string>()
-        }
+    opt.AddSecurityRequirement(new OpenApiSecurityRequirement {
+        { new OpenApiSecurityScheme {
+            Reference = new OpenApiReference {
+                Type = ReferenceType.SecurityScheme,
+                Id = "Bearer"
+            } }, Array.Empty<string>() }
     });
-
-    // Resolve duplicate key issue
-    options.CustomOperationIds(apiDesc =>
-        $"{apiDesc.ActionDescriptor.RouteValues["controller"]}_{apiDesc.HttpMethod}_{apiDesc.RelativePath}");
 });
 
-// Database
+// DB Context
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-
-
-// JWT Configuration
+// JWT Options
 builder.Services.Configure<jwtOptions>(builder.Configuration.GetSection("Jwt"));
-
-// AuthService Registration
-builder.Services.AddScoped<IAuthService, AuthService>();
-
-
-// JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        var jwtOptions = builder.Configuration.GetSection("Jwt").Get<jwtOptions>();
-        options.SaveToken = true;
+        var jwt = builder.Configuration.GetSection("Jwt").Get<jwtOptions>();
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidIssuer = jwtOptions.Issuer,
+            ValidIssuer = jwt.Issuer,
             ValidateAudience = true,
-            ValidAudience = jwtOptions.Audience,
+            ValidAudience = jwt.Audience,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Signingkey)),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Signingkey)),
             ValidateLifetime = true
         };
     });
 
+// 👇 مهم: حدد الـ PORT قبل بناء التطبيق
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+builder.WebHost.UseUrls($"https://*:{port}");
+
 var app = builder.Build();
 
-app.UseResponseCompression();
+// Auto apply migrations
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-   db.Database.Migrate(); // Automatically applies migrations
+    //db.Database.Migrate();
 }
 
+// Middleware
+app.UseResponseCompression();
 app.UseStaticFiles(new StaticFileOptions
 {
     OnPrepareResponse = ctx =>
@@ -121,19 +99,11 @@ app.UseStaticFiles(new StaticFileOptions
         ctx.Context.Response.Headers.Append("Cache-Control", "public,max-age=600");
     }
 });
-var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
-builder.WebHost.UseUrls($"http://*:{port}");
-// Swagger
 app.UseSwagger();
 app.UseSwaggerUI();
-
-// Middlewares
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
-
-// Endpoints
 app.MapControllers();
-app.UseStaticFiles();
 
 app.Run();

@@ -3,12 +3,14 @@ using Dor.Dtos.Building;
 using Dor.Interfaces;
 using Dor.Models;
 using Dor.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Dor.Controllers;
 
 [ApiController]
 [Route("api/buildings")]
+[Authorize]
 public class BuildingsController : ControllerBase
 {
     private readonly IRepository<Building> _buildingRepository;

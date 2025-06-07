@@ -12,10 +12,16 @@ using System.Text;
 
 namespace Dor.Services;
 
-public class AuthService(ApplicationDbContext dbContext, IOptions<jwtOptions> jwtOptions) : IAuthService
+public class AuthService : IAuthService
 {
-    private readonly ApplicationDbContext _dbContext = dbContext;
-    private readonly jwtOptions _jwtOptions = jwtOptions.Value;
+    private readonly ApplicationDbContext _dbContext;
+    private readonly jwtOptions _jwtOptions;
+
+    public AuthService(ApplicationDbContext dbContext, IOptions<jwtOptions> jwtOptions)
+    {
+        _dbContext = dbContext;
+        _jwtOptions = jwtOptions.Value;
+    }
 
     public async Task<AuthenticationResponse?> AuthenticateAsync(string username, string password)
     {
