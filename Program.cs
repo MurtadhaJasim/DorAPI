@@ -102,11 +102,9 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
     serverOptions.ListenAnyIP(int.Parse(port));
 });
 
-
-
 var app = builder.Build();
 
-// تنفيذ المايكريشن التلقائي عند تشغيل التطبيق
+// تنفيذ المايغريشن التلقائي عند تشغيل التطبيق
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -114,8 +112,14 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Middleware
-app.UseResponseCompression();
+app.UseHttpsRedirection();
+
 app.UseStaticFiles();
+
+app.UseCors("AllowFrontend");
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Swagger UI على صفحة الجذر
 app.UseSwagger();
@@ -127,12 +131,6 @@ app.UseSwaggerUI(c =>
 
 // إضافة route بسيط للتأكيد
 app.MapGet("/", () => Results.Redirect("/swagger"));
-
-app.UseCors("AllowFrontend");
-
-app.UseHttpsRedirection();
-app.UseAuthentication();
-app.UseAuthorization();
 
 app.MapControllers();
 
