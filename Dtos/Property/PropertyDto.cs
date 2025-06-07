@@ -7,4 +7,5 @@ public class PropertyDto
     public string? Owner { get; set; }
     public string? PropertyType { get; set; }
     public string? Status { get; set; }
+    public string? MapPath { get; set; }
 }

@@ -20,6 +20,7 @@ appsettings.json
 
 # Ignore launchSettings.json
 **/Properties/launchSettings.json
+wwwroot/files/
 
 # Build results
 [Dd]ebug/

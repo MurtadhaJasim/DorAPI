@@ -37,8 +37,6 @@ public class ApplicationDbContext : DbContext
             Name = "admin",
             Password = "admin", // Plain text password
             Role = "Admin",
-            RefreshToken = null,
-            RefreshTokenExpiryTime = DateTime.MinValue
         });
     }
 }

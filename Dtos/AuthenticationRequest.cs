@@ -2,6 +2,6 @@
 
 public class AuthenticationRequest
 {
-    public string UserName { get; set; } = default!;
+    public string Name { get; set; } = default!;
     public string Password { get; set; } = default!;
 }

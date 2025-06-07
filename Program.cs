@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using Dor;
+﻿using Dor;
 using Dor.Data;
 using Dor.Filters;
 using Dor.Interfaces;
@@ -14,36 +13,37 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// تحميل متغيرات البيئة (Railway أو أي منصة)
-builder.Configuration.AddEnvironmentVariables();
-
-// تسجيل الخدمات والاعتمادات
-builder.Services.AddLogging(cfg => cfg.AddDebug());
-builder.Services.AddResponseCompression();
-builder.Services.AddControllers(options => options.Filters.Add<LogActivityFilter>());
-builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-builder.Services.AddAutoMapper(typeof(MappingProfile));
-builder.Services.AddScoped<IAuthService, AuthService>();
-
-string fileStoragePath = Path.Combine(builder.Environment.ContentRootPath, "FileStorage");
-builder.Services.AddScoped<FileService>(sp => new FileService(fileStoragePath));
-
-// إعداد CORS للفرونت من Netlify
-builder.Services.AddCors(options =>
+// Logging
+builder.Services.AddLogging(cfg =>
 {
-    options.AddPolicy("AllowFrontend", builder =>
-    {
-        builder.AllowAnyOrigin()
-               .AllowAnyHeader()
-               .AllowAnyMethod();
-    });
+    cfg.AddDebug();
 });
 
-// Swagger مع دعم JWT
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(opt =>
+
+
+builder.Services.AddResponseCompression();
+builder.Configuration.AddEnvironmentVariables();
+
+// Global Filters
+builder.Services.AddControllers(options =>
 {
-    opt.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    options.Filters.Add<LogActivityFilter>();
+});
+
+// Register FileService with dependency injection
+builder.Services.AddScoped<FileService>(provider =>
+{
+    var fileStoragePath = builder.Configuration["FileStoragePath"] ?? "wwwroot/files";
+    return new FileService(fileStoragePath);
+});
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+builder.Services.AddAutoMapper(typeof(MappingProfile));
+
+// Swagger with Authorization
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
         Type = SecuritySchemeType.Http,
@@ -53,105 +53,86 @@ builder.Services.AddSwaggerGen(opt =>
         Description = "Enter Token"
     });
 
-    opt.AddSecurityRequirement(new OpenApiSecurityRequirement {
-        { new OpenApiSecurityScheme {
-            Reference = new OpenApiReference {
-                Type = ReferenceType.SecurityScheme,
-                Id = "Bearer"
-            } }, Array.Empty<string>() }
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
     });
+
+    // Resolve duplicate key issue
+    options.CustomOperationIds(apiDesc =>
+        $"{apiDesc.ActionDescriptor.RouteValues["controller"]}_{apiDesc.HttpMethod}_{apiDesc.RelativePath}");
 });
 
-// إعداد قاعدة البيانات PostgreSQL
-string? databaseUrl = builder.Configuration["DATABASE_PUBLIC_URL"];
-string connectionString;
-if (!string.IsNullOrEmpty(databaseUrl))
-{
-    connectionString = ConvertPostgresUrlToConnectionString(databaseUrl);
-}
-else
-{
-    connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
-}
-
+// Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// إعداد JWT
+
+
+// JWT Configuration
 builder.Services.Configure<jwtOptions>(builder.Configuration.GetSection("Jwt"));
+
+// AuthService Registration
+builder.Services.AddScoped<IAuthService, AuthService>();
+
+
+// JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        var jwt = builder.Configuration.GetSection("Jwt").Get<jwtOptions>();
+        var jwtOptions = builder.Configuration.GetSection("Jwt").Get<jwtOptions>();
+        options.SaveToken = true;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidIssuer = jwt.Issuer,
+            ValidIssuer = jwtOptions.Issuer,
             ValidateAudience = true,
-            ValidAudience = jwt.Audience,
+            ValidAudience = jwtOptions.Audience,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Signingkey)),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Signingkey)),
             ValidateLifetime = true
         };
     });
 
-// إعداد المنفذ من متغيرات البيئة (Railway يستخدم PORT)
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-
-builder.WebHost.ConfigureKestrel(serverOptions =>
-{
-    serverOptions.ListenAnyIP(int.Parse(port));
-});
-
 var app = builder.Build();
 
-// تنفيذ المايغريشن التلقائي عند تشغيل التطبيق
+app.UseResponseCompression();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.Migrate();
+    db.Database.Migrate(); 
 }
 
-// Middleware
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers.Append("Cache-Control", "public,max-age=600");
+    }
+});
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+builder.WebHost.UseUrls($"http://*:{port}");
+// Swagger
+app.UseSwagger();
+app.UseSwaggerUI();
+
+// Middlewares
 app.UseHttpsRedirection();
-
-app.UseStaticFiles();
-
-app.UseCors("AllowFrontend");
-
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Swagger UI على صفحة الجذر
-app.UseSwagger();
-app.UseSwaggerUI(c =>
-{
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dor API V1");
-    c.RoutePrefix = string.Empty; // Swagger على الصفحة الرئيسية
-});
-
-// إضافة route بسيط للتأكيد
-app.MapGet("/", () => Results.Redirect("/swagger"));
-
+// Endpoints
 app.MapControllers();
+app.UseStaticFiles();
 
 app.Run();
-
-static string ConvertPostgresUrlToConnectionString(string databaseUrl)
-{
-    var uri = new Uri(databaseUrl);
-    var userInfo = uri.UserInfo.Split(':');
-
-    var builder = new Npgsql.NpgsqlConnectionStringBuilder()
-    {
-        Host = uri.Host,
-        Port = uri.Port,
-        Username = userInfo[0],
-        Password = userInfo[1],
-        Database = uri.AbsolutePath.TrimStart('/'),
-        SslMode = Npgsql.SslMode.Prefer,
-        TrustServerCertificate = true
-    };
-
-    return builder.ToString();
-}

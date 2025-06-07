@@ -23,7 +23,7 @@ public class UserController : ControllerBase
     [HttpPost("auth")]
     public async Task<ActionResult<AuthenticationResponse>> AuthenticateUser(Dtos.AuthenticationRequest request)
     {
-        var result = await _authService.AuthenticateAsync(request.UserName, request.Password);
+        var result = await _authService.AuthenticateAsync(request.Name, request.Password);
         if (result == null)
             return Unauthorized();
 
