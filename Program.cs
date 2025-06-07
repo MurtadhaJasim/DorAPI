@@ -102,7 +102,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 // إعداد المنفذ من متغيرات البيئة
 var port = Environment.GetEnvironmentVariable("PORT") ?? "3000";
-builder.WebHost.UseUrls($"http://*:{port}");
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Listen(System.Net.IPAddress.Any, int.Parse(port));
+});
 
 var app = builder.Build();
 
@@ -124,7 +127,12 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dor API V1");
+    c.RoutePrefix = string.Empty; // يجعل Swagger في صفحة الجذر
+});
+
 
 app.UseCors("AllowFrontend");
 
